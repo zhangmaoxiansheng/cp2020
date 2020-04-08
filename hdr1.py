@@ -46,7 +46,7 @@ response = calibration.process(images, exposures)
 
 merge = cv2.createMergeDebevec()
 hdr = merge.process(images, exposures, response)
-cv2.imwrite('hdr_image.hdr', hdr)
+cv2.imwrite('hdr_image.png', hdr)
 
 
 #Non free module!

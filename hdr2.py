@@ -2,6 +2,7 @@ import numpy as np
 import cv2
 import os
 from matplotlib import pyplot as plt
+import scipy.io as io
 
 '''
 argument:
@@ -21,8 +22,8 @@ def gsolve(Z, B,l ,w):
     k=0
     for i in range(Z.shape[0]):
         for j in range(Z.shape[1]):
-            wij = w[Z[i,j]+1]
-            A[k, Z[i,j]+1] = wij
+            wij = w[Z[i,j]]
+            A[k, Z[i,j]] = wij
             A[k,n+i] = -wij
             b[k,0] = wij * B[j]
             k = k+1
@@ -49,9 +50,9 @@ def compute_hdr_map(images, g_red, g_green, g_blue, weights, ln_dt):
     curr_weight = np.zeros((height, width, channel))
     for i in range(img_num):
         curr_image = images[i].astype(np.float32)
-        curr_red = curr_image[:,:,0]
+        curr_red = curr_image[:,:,2]
         curr_green = curr_image[:,:,1]
-        curr_blue = curr_image[:,:,2]
+        curr_blue = curr_image[:,:,0]
         for x in np.nditer(curr_weight, op_flags=['readwrite']):
             x[...] = weights[int(x)]
         for x in np.nditer(curr_red, op_flags=['readwrite']):
@@ -64,20 +65,13 @@ def compute_hdr_map(images, g_red, g_green, g_blue, weights, ln_dt):
         curr_num[:,:,1] = curr_weight[:,:,1] * (curr_green - ln_dt[i])
         curr_num[:,:,2] = curr_weight[:,:,2] * (curr_blue - ln_dt[i])
 
+
         numerator = numerator + curr_num
         denominator = denominator + curr_weight
     
     ln_hdr_map = numerator / denominator
     hdr_map = np.exp(ln_hdr_map)
     return hdr_map
-
-def plot_radiance_map(rmap):
-    rmap = rmap / np.max(rmap)
-    rmap[np.where(rmap < 0)] = 0
-    rmap[np.where(rmap > 1)] = 1
-    h = figure
-    plt.imshow(h, cmap='plasma')
-    plt.show()
 
 def compute_weight():
     weigths = [min(w,256-w) for w in range(1,257)]
@@ -98,24 +92,21 @@ def read_img_time(folder='exposures',extention='.png'):
 
 def sample_rgb_images(images):
     total_sample_num = len(images)
-    # num_sample = 255 / (total_sample_num-1) * 2
-    # num_sample = np.round(255 / num_sample)
-    # num_sample = int(num_sample)
-    num_sample = 50
+    num_sample = 70
 
-    img_pixels = images[1].shape[1] * images[1].shape[2]
-    step = int(img_pixels / num_sample)
-    sample_indices = list(range(0,step,img_pixels))
+    img_pixels = images[1].shape[0] * images[1].shape[1]
+    step = int(img_pixels / (num_sample-1))
+    sample_indices = list(range(0,img_pixels,step))
 
-    z_red = np.zeros((num_sample, total_sample_num), dtype = np.int)
-    z_green = np.zeros((num_sample, total_sample_num), dtype = np.int)
-    z_blue = np.zeros((num_sample, total_sample_num), dtype = np.int)
+    z_red = np.zeros((num_sample, total_sample_num), dtype = np.uint8)
+    z_green = np.zeros((num_sample, total_sample_num), dtype = np.uint8)
+    z_blue = np.zeros((num_sample, total_sample_num), dtype = np.uint8)
 
     for i in range(total_sample_num):
         sample_red, sample_green, sample_blue = sample_exposure(images[i], sample_indices)
-        z_red[:,i] = sample_red.reshape(-1,1)
-        z_green[:,i] = sample_green.reshape(-1,1)
-        z_blue[:,i] = sample_blue.reshape(-1,1)
+        z_red[:,i] = sample_red
+        z_green[:,i] = sample_green
+        z_blue[:,i] = sample_blue
     return z_red, z_green, z_blue
 
 
@@ -133,18 +124,20 @@ def sample_exposure(image, sample_indices):
     return sample_red, sample_green, sample_blue
 
 
-
-
 if __name__ == "__main__":
     images, exposure_times = read_img_time()
     ln_dt = np.log(exposure_times)
     z_red, z_green, z_blue = sample_rgb_images(images)
     weights = compute_weight()
-    l = 50
+    l = 10.0
     g_red,_ = gsolve(z_red, ln_dt, l, weights)
     g_green,_ = gsolve(z_green, ln_dt, l, weights)
     g_blue,_ = gsolve(z_blue, ln_dt, l, weights)
     hdr_map = compute_hdr_map(images, g_red, g_green, g_blue, weights, ln_dt)
-    cv2.imwrite('hdr_map.png', hdr_map)
+    output = cv2.normalize(hdr_map, None, 0, 255, cv2.NORM_MINMAX)
+    output = np.round(output)
+    output = output.astype(np.uint8)
+    output = output[...,::-1]#cv2.imwrite BGR
+    cv2.imwrite('hdr_map.png', output)
     print('finish')
 
