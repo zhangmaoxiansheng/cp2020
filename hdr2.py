@@ -92,7 +92,7 @@ def read_img_time(folder='exposures',extention='.png'):
 
 def sample_rgb_images(images):
     total_sample_num = len(images)
-    num_sample = 70
+    num_sample = 70 #opencv default num_sample=70
 
     img_pixels = images[1].shape[0] * images[1].shape[1]
     step = int(img_pixels / (num_sample-1))
@@ -129,7 +129,7 @@ if __name__ == "__main__":
     ln_dt = np.log(exposure_times)
     z_red, z_green, z_blue = sample_rgb_images(images)
     weights = compute_weight()
-    l = 10.0
+    l = 10.0 #opencv default
     g_red,_ = gsolve(z_red, ln_dt, l, weights)
     g_green,_ = gsolve(z_green, ln_dt, l, weights)
     g_blue,_ = gsolve(z_blue, ln_dt, l, weights)
