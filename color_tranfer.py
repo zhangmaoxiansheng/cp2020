@@ -114,8 +114,10 @@ class CT():
 
 
 if __name__ == "__main__":
-    im1 = imread('scotland_house.png')
-    im2 = imread('scotland_plain.png')
+    # im1 = imread('scotland_house.png')
+    # im2 = imread('scotland_plain.png')
+    im1 = imread('1.jpg')
+    im2 = imread('2.jpg')
     #lab
     ct = CT()
     res_fast = ct(im1,im2)
